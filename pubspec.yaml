@@ -35,6 +35,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
+  file_picker: ^8.0.0
+  flutter_launcher_icons: ^0.13.1
+
 
 dev_dependencies:
   flutter_test:
@@ -52,11 +55,12 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/kiwinest.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -88,3 +92,37 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+flutter_icons:
+  macos: true
+  windows: true
+  linux: true
+  image_path: "assets/kiwinest.png"
+  macos_icons:
+    - size: 16x16
+      filename: kiwinest_16x16.png
+    - size: 32x32
+      filename: kiwinest_32x32.png
+    - size: 64x64
+      filename: kiwinest_64x64.png
+    - size: 128x128
+      filename: kiwinest_128x128.png
+    - size: 256x256
+      filename: kiwinest_256x256.png
+    - size: 512x512
+      filename: kiwinest_512x512.png
+    - size: 1024x1024
+      filename: kiwinest_1024x1024.png
+
+flutter_launcher_icons:
+  image_path: "assets/icon/icon.png"
+  windows:
+    generate: true
+    image_path: "path/to/image.png"
+    icon_size: 48 # min:48, max:256, default: 48
+  macos:
+    generate: true
+    image_path: "path/to/image.png"
+  linux:
+    generate: true
+    image_path: "path/to/image.png"

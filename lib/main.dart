@@ -1,52 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'second_page.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Color(0xff6AE084)),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: '문서 / 코드 암호화'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
   final String title;
 
@@ -55,71 +32,209 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  String? _filePath;
+  double _containerWidth = 500;
+  static const int maxLength = 30;
 
-  void _incrementCounter() {
+  final _algorithms = ['RSA'];
+  String? _selectedalgo;
+
+  double _sliderValue = 0.0;
+  double _cycleValue = 0.0;
+
+  List<Map<String, dynamic>> files = [];
+
+  @override
+  void initState() {
+    super.initState();
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _selectedalgo = _algorithms[0];
     });
+  }
+
+  void _uploadFile() {
+    // 파일 업로드 기능 추가
+    // 업로드가 완료되면 setState를 호출하여 files 리스트에 새 파일 정보를 추가
+    setState(() {
+      files.add({
+        'location': 'Location',
+        'name': 'File Name',
+        'status': 'Status',
+      });
+    });
+  }
+
+  void _navigateToSecondPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SecondPage()),
+    );
+  }
+
+    Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      setState(() {
+        _filePath = result.files.single.path!;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
+      backgroundColor: Color(0xffE0E0E0),
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            onPressed: _navigateToSecondPage,
+            icon: Icon(Icons.arrow_forward),
+          ),
+        ],
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children:[
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    color: Colors.white,
+                    width: 500, // 원하는 가로 크기로 지정
+                    child: DataTable(
+                      dataRowColor: MaterialStateProperty.all(Colors.white),
+                      columns: const <DataColumn>[
+                        DataColumn(label: Text('File Location')),
+                        DataColumn(label: Text('File Name')),
+                        DataColumn(label: Text('Status')),
+                      ],
+                      rows: List.generate(
+                        files.length,
+                            (index) => DataRow(cells: [
+                          DataCell(Text(files[index]['location'] ?? '')), // null일 경우 빈 문자열을 표시
+                          DataCell(Text(files[index]['name'] ?? '')),     // null일 경우 빈 문자열을 표시
+                          DataCell(Text(files[index]['status'] ?? '')),   // null일 경우 빈 문자열을 표시
+                        ]),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height:100),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: _uploadFile,
+                        child: Text('암호화'),
+                      ),
+                      const SizedBox(width: 50),
+                      ElevatedButton(
+                        onPressed: null,
+                        child: Text('복호화'),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+              const SizedBox(width: 50),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: <Widget>[
+                      const SizedBox(height: 100),
+                      Text('암호 알고리즘 선택', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
+                      DropdownButton(
+                        value: _selectedalgo,
+                        items: _algorithms
+                            .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text(e),
+                        ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedalgo = value!;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 130),
+                      Text('키 값 안전성 설정', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
+                      Slider(
+                        value: _cycleValue,
+                        min: 0,
+                        max: 100,
+                        divisions: 10,
+                        activeColor: _cycleValue >= 50 ? Colors.green : Colors.red,
+                        onChanged: (newValue) {
+                          setState(() {
+                            _cycleValue = newValue;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 70),
+                  Column(
+                    children: <Widget>[
+                      const SizedBox(height: 100),
+                      Text('키 파일 경로', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
+                      Container(
+                        width: 200,
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: _filePath != null
+                            ? Text(
+                          _filePath!.length > maxLength
+                              ? 'Path: ${_filePath!.substring(0, maxLength)}...'
+                              : 'Path: $_filePath',
+                          textAlign: TextAlign.center,
+                        )
+                            : const SizedBox(),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _pickFile,
+                        child: Text('Browse..'),
+                      ),
+
+                      const SizedBox(height: 100),
+                      Text('클린업 사이클 설정', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
+                      Slider(
+                        value: _sliderValue,
+                        min: 0,
+                        max: 100,
+                        divisions: 10,
+                        activeColor: _sliderValue >= 50 ? Colors.green : Colors.red,
+                        onChanged: (newValue) {
+                          setState(() {
+                            _sliderValue = newValue;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 70),
+                      ElevatedButton(
+                        onPressed: () {},
+                        child: Text('비밀번호를 잊으셨나요?'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ]
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
