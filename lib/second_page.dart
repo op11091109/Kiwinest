@@ -44,7 +44,7 @@ class _SecondPageState extends State<SecondPage> {
       backgroundColor: Color(0xffE0E0E0),
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Second Page'),
+        title: const Text('폴더 암호화'),
       ),
       body: Center(
         child: Row(
