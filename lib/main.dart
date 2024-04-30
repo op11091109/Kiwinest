@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:kiwinest/rsa.dart'; // RSA 클래스를 가져옵니다.
+import 'package:kiwinest/rsa.dart';
 import 'dart:io';
 import 'second_page.dart';
 
@@ -34,6 +34,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  bool _isDecryptButtonEnabled = false;
   String? _filePath;
   static const int maxLength = 30;
 
@@ -166,16 +167,15 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                     rows: List.generate(
                       files.length,
-                          (index) => DataRow(cells: [
-                        DataCell(
-                          GestureDetector(
-                            onTap: () {
-                              // 해당 행의 파일을 복호화합니다.
-                              String filePath = files[index]['location'] ?? '';
-                              _decryptDocument(filePath);
+                          (index) => DataRow(
+                            onSelectChanged: (selected) {
+                              setState(() {
+                                _isDecryptButtonEnabled = selected!;
+                              });
                             },
-                            child: Text(files[index]['location'] ?? ''),
-                          ),
+                              cells: [
+                        DataCell(
+                          Text(files[index]['location'] ?? '')
                         ),
                         DataCell(Text(files[index]['status'] ?? '')),
                       ]),
