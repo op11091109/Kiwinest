@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:kiwinest/rsa.dart';
+import 'package:kiwinest/rsa.dart'; // RSA 클래스를 가져옵니다.
 import 'dart:io';
 import 'second_page.dart';
 
@@ -34,7 +34,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  bool _isDecryptButtonEnabled = false;
   String? _filePath;
   static const int maxLength = 30;
 
@@ -46,6 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<Map<String, dynamic>> files = [];
   bool _isDecryptionEnabled = false;
+  int _selectedIndex = -1;
 
   @override
   void initState() {
@@ -167,15 +167,17 @@ class _MyHomePageState extends State<MyHomePage> {
                     ],
                     rows: List.generate(
                       files.length,
-                          (index) => DataRow(
-                            onSelectChanged: (selected) {
+                          (index) => DataRow(cells: [
+                        DataCell(
+                          GestureDetector(
+                            onTap: () {
                               setState(() {
-                                _isDecryptButtonEnabled = selected!;
+                                _isDecryptionEnabled = true;
+                                _selectedIndex = index; // Store selected index
                               });
                             },
-                              cells: [
-                        DataCell(
-                          Text(files[index]['location'] ?? '')
+                            child: Text(files[index]['location'] ?? ''),
+                          ),
                         ),
                         DataCell(Text(files[index]['status'] ?? '')),
                       ]),
@@ -189,13 +191,11 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () {
-                    // 복호화 버튼을 눌렀을 때 _isDecryptionEnabled를 true로 설정합니다.
-                    setState(() {
-                      _isDecryptionEnabled = true;
-                    });
-                  },
-                  // _isDecryptionEnabled에 따라 복호화 버튼의 활성화 상태를 변경합니다.
+                  onPressed: _isDecryptionEnabled ? () {
+                    if (_selectedIndex != -1) {
+                      _decryptDocument(files[_selectedIndex]['location']);
+                    }
+                  } : null,
                   child: Text('복호화'),
                   style: ButtonStyle(
                     backgroundColor: MaterialStateProperty.all(_isDecryptionEnabled ? Colors.blue : Colors.grey),
