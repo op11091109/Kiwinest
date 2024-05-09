@@ -3,9 +3,29 @@ import 'package:file_picker/file_picker.dart';
 import 'package:kiwinest/rsa.dart'; // RSA 클래스를 가져옵니다.
 import 'dart:io';
 import 'second_page.dart';
+import 'package:path_provider/path_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await createAppFolder();
+
   runApp(const MyApp());
+}
+
+Future<void> createAppFolder() async {
+  // 앱 디렉토리 가져오기
+  Directory appDir = await getApplicationDocumentsDirectory();
+
+  // 새로운 폴더 경로 생성
+  String newFolderPath = '${appDir.path}/Nest';
+
+  // 폴더가 존재하지 않는 경우에만 폴더 생성
+  if (!(await Directory(newFolderPath).exists())) {
+    await Directory(newFolderPath).create(recursive: true);
+    print('폴더가 생성되었습니다.');
+  } else {
+    print('이미 폴더가 존재합니다.');
+  }
 }
 
 class MyApp extends StatelessWidget {

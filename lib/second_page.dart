@@ -44,7 +44,7 @@ class _SecondPageState extends State<SecondPage> {
       backgroundColor: Color(0xffE0E0E0),
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('폴더 암호화'),
+        title: const Text('보안 디렉토리'),
       ),
       body: Center(
         child: Row(
@@ -78,12 +78,12 @@ class _SecondPageState extends State<SecondPage> {
                   children: [
                     ElevatedButton(
                       onPressed: _uploadFile,
-                      child: const Text('암호화'),
+                      child: const Text('Fetch'),
                     ),
                     const SizedBox(width: 50),
                     ElevatedButton(
                       onPressed: null,
-                      child: const Text('복호화'),
+                      child: const Text('Eject'),
                     ),
                   ],
                 ),
