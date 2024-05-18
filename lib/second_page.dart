@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 class SecondPage extends StatefulWidget {
   const SecondPage({Key? key}) : super(key: key);
@@ -36,7 +37,25 @@ class _SecondPageState extends State<SecondPage> {
 
   Future<void> _pickFile() async {
     // File picking functionality
+    // After picking the file, call _encryptFolder function
+    _encryptFolder();
   }
+
+  Future<void> _encryptFolder() async {
+    String folderPath = '/path/to/your/folder'; // Specify the folder path
+    Directory folder = Directory(folderPath);
+    if (!await folder.exists()) {
+      // Create the folder if it doesn't exist
+      await folder.create();
+    }
+    // Encrypt the folder using selected algorithm and security settings
+    // You may need to use external encryption libraries or system commands here
+    // Example:
+    // Run shell command to encrypt the folder
+    // await Process.run('encryption_command', [folderPath]);
+    print('Folder encrypted successfully.');
+  }
+
 
   @override
   Widget build(BuildContext context) {

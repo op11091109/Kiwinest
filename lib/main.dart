@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:kiwinest/rsa.dart'; // RSA 클래스를 가져옵니다.
 import 'dart:io';
+import 'dart:convert';
 import 'second_page.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await createAppFolder();
+  await createRSAKeyFile(); // RSA 키 파일을 생성합니다.
 
   runApp(const MyApp());
 }
@@ -23,8 +26,68 @@ Future<void> createAppFolder() async {
   if (!(await Directory(newFolderPath).exists())) {
     await Directory(newFolderPath).create(recursive: true);
     print('폴더가 생성되었습니다.');
+
+    // 폴더를 숨김 처리
+    await _hideFolder(newFolderPath);
   } else {
     print('이미 폴더가 존재합니다.');
+  }
+}
+Future<void> _hideFolder(String folderPath) async {
+  if (Platform.isWindows) {
+    await _hideFolderWindows(folderPath);
+  } else if (Platform.isMacOS || Platform.isLinux) {
+    await _hideFolderUnix(folderPath);
+  } else {
+    print('Hiding folders is not supported on this platform.');
+  }
+}
+
+Future<void> _hideFolderWindows(String folderPath) async {
+  try {
+    final result = await Process.run('attrib', ['+h', folderPath]);
+    if (result.exitCode == 0) {
+      print('Folder hidden successfully on Windows.');
+    } else {
+      print('Failed to hide folder on Windows: ${result.stderr}');
+    }
+  } catch (e) {
+    print('Failed to hide folder on Windows: $e');
+  }
+}
+
+Future<void> _hideFolderUnix(String folderPath) async {
+  final directory = Directory(folderPath);
+  final parentDir = directory.parent.path;
+  final hiddenFolderPath = '$parentDir/.${directory.uri.pathSegments.last}';
+
+  try {
+    await directory.rename(hiddenFolderPath);
+    print('Folder hidden successfully on Unix-based system.');
+  } catch (e) {
+    print('Failed to hide folder on Unix-based system: $e');
+  }
+}
+
+Future<void> createRSAKeyFile() async {
+  // 앱 디렉토리 가져오기
+  Directory appDir = await getApplicationDocumentsDirectory();
+  String keyFilePath = '${appDir.path}/Nest/rsa_key.txt';
+
+  // 키 파일이 이미 존재하는지 확인
+  if (!(await File(keyFilePath).exists())) {
+    RSA rsa = RSA();
+    rsa.generatePQ();
+    rsa.generatePublicKey();
+    rsa.generatePrivateKey();
+
+    // 키를 텍스트 파일로 저장
+    File keyFile = File(keyFilePath);
+    await keyFile.writeAsString(rsa.toKeyString());
+
+    print('RSA 키 파일이 생성되었습니다.');
+  } else {
+    print('RSA 키 파일이 이미 존재합니다.');
   }
 }
 
@@ -55,7 +118,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String? _filePath;
-  static const int maxLength = 30;
 
   final _algorithms = ['RSA'];
   String? _selectedalgo;
@@ -97,59 +159,83 @@ class _MyHomePageState extends State<MyHomePage> {
     if (result != null) {
       setState(() {
         _filePath = result.files.single.path!;
-        _encryptDocument();
       });
+
+      // 파일의 확장자가 txt가 아닌 경우, 해당 파일의 사본을 만들어 txt 파일로 변환합니다.
+      if (!_filePath!.toLowerCase().endsWith('.txt')) {
+        try {
+          // 선택한 파일을 읽어옵니다.
+          File originalFile = File(_filePath!);
+          List<int> bytes = await originalFile.readAsBytes();
+
+          // 원래 파일의 확장자 저장
+          String originalExtension = _filePath!.split('.').last;
+
+          // 파일의 확장자를 변경하여 사본 파일을 생성합니다.
+          String txtFilePath = _filePath!.replaceAll(originalExtension, 'txt');
+          File txtFile = File(txtFilePath);
+
+          // 파일의 내용을 txt 파일로 작성합니다.
+          await txtFile.writeAsBytes(bytes);
+
+          // 파일을 암호화합니다.
+          await _encryptDocument(txtFilePath, originalExtension);
+
+          // 암호화된 파일이 생성된 후, 중간에 생성된 txt 파일을 삭제합니다.
+          await txtFile.delete();
+        } catch (e) {
+          print('파일을 처리하는 도중 오류가 발생했습니다: $e');
+        }
+      } else {
+        // txt 파일인 경우 암호화합니다.
+        await _encryptDocument(_filePath!, 'txt');
+      }
     }
   }
 
-  Future<void> _encryptDocument() async {
-    if (_filePath == null) {
-      print('파일을 선택하세요.');
-      return;
-    }
-
+  Future<void> _encryptDocument(String filePath, String originalExtension) async {
     RSA rsa = RSA();
-    rsa.generatePQ();
-    rsa.generatePublicKey();
-    rsa.generatePrivateKey();
+    Directory appDir = await getApplicationDocumentsDirectory();
+    String keyFilePath = '${appDir.path}/Nest/rsa_key.txt';
+    await rsa.loadKeysFromFile(keyFilePath);
 
-    // 암호화된 파일을 저장할 경로
-    String encryptedFilePath = _filePath!.replaceAll('.txt', '_encrypted.txt');
+    String encryptedFilePath = filePath.replaceAll('.txt', '_encrypted.$originalExtension');
 
-    File file = File(_filePath!);
-    String content = file.readAsStringSync();
+    File file = File(filePath);
+    String content = await file.readAsString(); // 파일 내용을 문자열로 읽기
 
-    // 파일을 암호화합니다.
     List<int> encryptedContent = rsa.encryptLine(content);
 
-    // 암호화된 내용을 파일에 저장합니다.
-    File encryptedFile = File(encryptedFilePath);
-    encryptedFile.writeAsBytesSync(encryptedContent);
+    String encryptedData = encryptedContent.join(',');
 
-    // 파일 업로드 기능 추가
+    File encryptedFile = File(encryptedFilePath);
+    await encryptedFile.writeAsString(encryptedData); // 인코딩된 문자열을 파일에 쓰기
+
     _uploadFile(encryptedFilePath, 'Encrypted');
+
+    _filePath = encryptedFilePath;
   }
 
   Future<void> _decryptDocument(String filePath) async {
-    // 복호화된 파일을 선택하면 원본 파일로 복호화합니다.
     RSA rsa = RSA();
-    rsa.generatePQ();
-    rsa.generatePublicKey();
-    rsa.generatePrivateKey();
+    Directory appDir = await getApplicationDocumentsDirectory();
+    String keyFilePath = '${appDir.path}/Nest/rsa_key.txt';
+    await rsa.loadKeysFromFile(keyFilePath);
 
     File encryptedFile = File(filePath);
-    List<int> encryptedContent = await encryptedFile.readAsBytes();
+    String encryptedContent = await encryptedFile.readAsString(); // 암호화된 문자열 읽기
 
-    // 파일을 복호화합니다.
-    String decryptedContent = rsa.decryptLine(encryptedContent);
+    List<int> encryptedData = encryptedContent.split(',').map(int.parse).toList(); // 숫자 형태로 저장된 암호화된 데이터 읽기
 
-    // 복호화된 내용을 파일에 저장합니다.
-    String decryptedFilePath = filePath.replaceAll('_encrypted.txt', '_decrypted.txt');
+    String decryptedContent = rsa.decryptLine(encryptedData); // 데이터 복호화
+
+    String decryptedFilePath = filePath.replaceAll('_encrypted', '_decrypted');
     File decryptedFile = File(decryptedFilePath);
-    decryptedFile.writeAsStringSync(decryptedContent);
+    await decryptedFile.writeAsString(decryptedContent);
 
-    // 파일 업로드 기능 추가
     _uploadFile(decryptedFilePath, 'Decrypted');
+
+    _filePath = decryptedFilePath;
   }
 
   @override
@@ -271,30 +357,17 @@ class _MyHomePageState extends State<MyHomePage> {
               children: <Widget>[
                 const SizedBox(height: 100),
                 Text(
-                  '키 파일 경로',
+                  '키 파일 생성',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 20),
-                Container(
-                  width: 200,
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: _filePath != null
-                      ? Text(
-                    _filePath!.length > maxLength
-                        ? 'Path: ${_filePath!.substring(0, maxLength)}...'
-                        : 'Path: $_filePath',
-                    textAlign: TextAlign.center,
-                  )
-                      : const SizedBox(),
+                Text(
+                  '키 파일을 분실하였을 때 사용하세요. 이전의 암호화 파일들은 되돌릴 수 없습니다.',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.normal, color: Colors.red),
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _pickFile,
-                  child: Text('Browse..'),
+                  child: Text('생성'),
                 ),
                 const SizedBox(height: 100),
                 Text(
