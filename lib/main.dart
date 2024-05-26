@@ -6,12 +6,13 @@ import 'dart:convert';
 import 'second_page.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await createAppFolder();
   await createRSAKeyFile(); // RSA 키 파일을 생성합니다.
-
   runApp(const MyApp());
 }
 
@@ -45,7 +46,7 @@ Future<void> _hideFolder(String folderPath) async {
 
 Future<void> _hideFolderWindows(String folderPath) async {
   try {
-    final result = await Process.run('attrib', ['+h', folderPath]);
+    final result = await Process.run('attrib', ['+h', /*'+s',*/ folderPath]);
     if (result.exitCode == 0) {
       print('Folder hidden successfully on Windows.');
     } else {
@@ -70,7 +71,7 @@ Future<void> _hideFolderUnix(String folderPath) async {
 }
 
 Future<void> createRSAKeyFile() async {
-  // 앱 디렉토리 가져오기
+  // 앱 디렉토리 경로 가져오기
   Directory appDir = await getApplicationDocumentsDirectory();
   String keyFilePath = '${appDir.path}/Nest/rsa_key.txt';
 
@@ -87,9 +88,54 @@ Future<void> createRSAKeyFile() async {
 
     print('RSA 키 파일이 생성되었습니다.');
   } else {
-    print('RSA 키 파일이 이미 존재합니다.');
+    // 기존 키 파일을 백업하고 새 키 파일로 대체
+    try {
+      // 기존 키 파일 백업
+      await _backupKeyFile(keyFilePath);
+
+      // 새로운 키 파일 생성
+      RSA rsa = RSA();
+      rsa.generatePQ();
+      rsa.generatePublicKey();
+      rsa.generatePrivateKey();
+
+      // 새 키를 텍스트 파일로 저장
+      File keyFile = File(keyFilePath);
+      await keyFile.writeAsString(rsa.toKeyString());
+
+      print('기존 RSA 키 파일을 백업하고 새 키 파일을 생성했습니다.');
+    } catch (e) {
+      print('키 파일을 대체하는 도중 오류가 발생했습니다: $e');
+    }
   }
 }
+
+Future<void> _backupKeyFile(String keyFilePath) async {
+  try {
+    // 기존 키 파일 경로 및 이름 가져오기
+    File keyFile = File(keyFilePath);
+    String keyFileName = keyFile.path.split('/').last;
+
+    // 현재 시간 가져오기
+    DateTime now = DateTime.now();
+    String formattedDate = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+
+    // 백업 파일 이름 생성
+    String backupFileName = 'rsa_key_backup_$formattedDate.txt';
+
+    // 백업 파일 경로 생성
+    Directory appDir = await getApplicationDocumentsDirectory();
+    String backupKeyFilePath = '${appDir.path}/$backupFileName';
+
+    // 기존 키 파일을 백업
+    await keyFile.copy(backupKeyFilePath);
+
+    print('기존 RSA 키 파일을 백업했습니다: $backupKeyFilePath');
+  } catch (e) {
+    print('기존 RSA 키 파일을 백업하는 도중 오류가 발생했습니다: $e');
+  }
+}
+
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -118,16 +164,19 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String? _filePath;
+  RSA rsa = RSA();
+  final List<int> _keySafetyLevels = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800];
 
   final _algorithms = ['RSA'];
   String? _selectedalgo;
 
-  double _sliderValue = 0.0;
+  double _sliderValue = 10.0;
   double _cycleValue = 0.0;
 
   List<Map<String, dynamic>> files = [];
   bool _isDecryptionEnabled = false;
   int _selectedIndex = -1;
+
 
   @override
   void initState() {
@@ -135,6 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _selectedalgo = _algorithms[0];
     });
+    _startCleanupCycleTimer();
   }
 
   void _uploadFile(String filePath, String status) {
@@ -236,6 +286,79 @@ class _MyHomePageState extends State<MyHomePage> {
     _uploadFile(decryptedFilePath, 'Decrypted');
 
     _filePath = decryptedFilePath;
+  }
+
+  void _startCleanupCycleTimer() {
+    Timer.periodic(Duration(minutes: _sliderValue.toInt()), (timer) async {
+      // 클린업 작업 실행
+      await _performCleanup();
+    });
+  }
+
+  Future<void> _performCleanup() async {
+    // 새로운 키 파일 생성
+    await createRSAKeyFile();
+
+    // 모든 암호화된 파일을 가져오기
+    List<File> encryptedFiles = await getAllEncryptedFiles();
+
+    // 모든 암호화된 파일을 복호화하고 새로운 키로 재암호화
+    for (File file in encryptedFiles) {
+      await decryptAndReencrypt(file);
+    }
+  }
+
+  Future<List<File>> getAllEncryptedFiles() async {
+    List<File> encryptedFiles = [];
+
+    try {
+      Directory appDir = await getApplicationDocumentsDirectory();
+      Directory nestDir = Directory('${appDir.path}/Nest');
+
+      if (await nestDir.exists()) {
+        List<FileSystemEntity> entities = nestDir.listSync();
+
+        for (FileSystemEntity entity in entities) {
+          if (entity is File && entity.path.toLowerCase().endsWith('_encrypted.txt')) {
+            encryptedFiles.add(entity);
+          }
+        }
+      }
+    } catch (e) {
+      print('Error while getting encrypted files: $e');
+    }
+
+    return encryptedFiles;
+  }
+
+  Future<void> decryptAndReencrypt(File file) async {
+    try {
+      RSA rsa = RSA();
+      Directory appDir = await getApplicationDocumentsDirectory();
+      String keyFilePath = '${appDir.path}/Nest/rsa_key.txt';
+      await rsa.loadKeysFromFile(keyFilePath);
+
+      // 암호화된 파일 읽기
+      List<int> encryptedData = await file.readAsBytes();
+
+      // 데이터 복호화
+      String decryptedContent = rsa.decryptLine(encryptedData);
+
+      // 새로운 키로 다시 암호화
+      String reencryptedFilePath = file.path.replaceAll('_encrypted.txt', '_reencrypted.txt');
+      List<int> reencryptedData = rsa.encryptLine(decryptedContent);
+      File reencryptedFile = File(reencryptedFilePath);
+      await reencryptedFile.writeAsBytes(reencryptedData);
+
+      // 업로드 파일 정보 업데이트
+      setState(() {
+        files.removeWhere((element) => element['location'] == file.path);
+        _uploadFile(reencryptedFilePath, 'Reencrypted');
+      });
+
+    } catch (e) {
+      print('Error while decrypting and reencrypting file: $e');
+    }
   }
 
   @override
@@ -341,12 +464,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 Slider(
                   value: _cycleValue,
                   min: 0,
-                  max: 100,
-                  divisions: 10,
-                  activeColor: _cycleValue >= 50 ? Colors.green : Colors.red,
+                  max: 8,
+                  divisions: 8,
+                  label: _cycleValue.toString(),
+                  activeColor: _cycleValue >= 4 ? Colors.green : Colors.red,
                   onChanged: (newValue) {
                     setState(() {
                       _cycleValue = newValue;
+                      int realnum = (pow(2, _cycleValue)  * 50).toInt();
+                      rsa.setKeySafetyLevel(realnum);
                     });
                   },
                 ),
@@ -366,7 +492,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: _pickFile,
+                  onPressed: createRSAKeyFile,
                   child: Text('생성'),
                 ),
                 const SizedBox(height: 100),
@@ -377,20 +503,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 const SizedBox(height: 20),
                 Slider(
                   value: _sliderValue,
-                  min: 0,
+                  min: 10,
                   max: 100,
-                  divisions: 10,
+                  divisions: 9,
+                  label: _sliderValue.toString(),
                   activeColor: _sliderValue >= 50 ? Colors.green : Colors.red,
                   onChanged: (newValue) {
                     setState(() {
                       _sliderValue = newValue;
                     });
                   },
-                ),
-                const SizedBox(height: 70),
-                ElevatedButton(
-                  onPressed: () {},
-                  child: Text('비밀번호를 잊으셨나요?'),
                 ),
               ],
             ),

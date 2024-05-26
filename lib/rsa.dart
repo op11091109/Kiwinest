@@ -5,6 +5,12 @@ import 'dart:io';
 class RSA {
   late int p, q, n, phi, e, d;
 
+  int _keySafetyLevel = 0; // 기본 값
+
+  void setKeySafetyLevel(int level) {
+    _keySafetyLevel = level;
+  }
+
   bool isPrime(int n) {
     if (n <= 1) return false;
     for (int i = 2; i <= sqrt(n); i++) {
@@ -15,7 +21,7 @@ class RSA {
 
   void generatePQ() {
     List<int> primes = [];
-    for (int i = 10; i < 100; i++) {
+    for (int i = 10; i < _keySafetyLevel; i++) {
       if (isPrime(i)) primes.add(i);
     }
     p = primes[Random().nextInt(primes.length)];
