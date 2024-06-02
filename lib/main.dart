@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:kiwinest/rsa.dart'; // RSA 클래스를 가져옵니다.
+import 'package:kiwinest/rsa.dart';
 import 'dart:io';
-import 'dart:convert';
 import 'second_page.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
 import 'dart:async';
+import 'package:desktop_window/desktop_window.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await DesktopWindow.setMinWindowSize(const Size(1600, 800));
   await createAppFolder();
   await createRSAKeyFile(); // RSA 키 파일을 생성합니다.
   runApp(const MyApp());
@@ -148,6 +148,14 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Color(0xff6AE084)),
         useMaterial3: true,
       ),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            size: const Size(1600, 800)
+          ),
+          child: child!,
+        );
+      },
       home: const MyHomePage(title: '문서 / 코드 암호화'),
     );
   }
@@ -165,7 +173,17 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   String? _filePath;
   RSA rsa = RSA();
-  final List<int> _keySafetyLevels = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800];
+  final List<int> _keySafetyLevels = [
+    50,
+    100,
+    200,
+    400,
+    800,
+    1600,
+    3200,
+    6400,
+    12800
+  ];
 
   final _algorithms = ['RSA'];
   String? _selectedalgo;
@@ -183,6 +201,9 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     setState(() {
       _selectedalgo = _algorithms[0];
+      _sliderValue = 50;
+      _cycleValue = 3;
+      rsa.setKeySafetyLevel((pow(2, _cycleValue) * 50).toInt());
     });
     _startCleanupCycleTimer();
   }
@@ -243,13 +264,15 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<void> _encryptDocument(String filePath, String originalExtension) async {
+  Future<void> _encryptDocument(String filePath,
+      String originalExtension) async {
     RSA rsa = RSA();
     Directory appDir = await getApplicationDocumentsDirectory();
     String keyFilePath = '${appDir.path}/Nest/rsa_key.txt';
     await rsa.loadKeysFromFile(keyFilePath);
 
-    String encryptedFilePath = filePath.replaceAll('.txt', '_encrypted.$originalExtension');
+    String encryptedFilePath = filePath.replaceAll(
+        '.txt', '_encrypted.$originalExtension');
 
     File file = File(filePath);
     String content = await file.readAsString(); // 파일 내용을 문자열로 읽기
@@ -275,7 +298,9 @@ class _MyHomePageState extends State<MyHomePage> {
     File encryptedFile = File(filePath);
     String encryptedContent = await encryptedFile.readAsString(); // 암호화된 문자열 읽기
 
-    List<int> encryptedData = encryptedContent.split(',').map(int.parse).toList(); // 숫자 형태로 저장된 암호화된 데이터 읽기
+    List<int> encryptedData = encryptedContent.split(',')
+        .map(int.parse)
+        .toList(); // 숫자 형태로 저장된 암호화된 데이터 읽기
 
     String decryptedContent = rsa.decryptLine(encryptedData); // 데이터 복호화
 
@@ -283,7 +308,12 @@ class _MyHomePageState extends State<MyHomePage> {
     File decryptedFile = File(decryptedFilePath);
     await decryptedFile.writeAsString(decryptedContent);
 
-    _uploadFile(decryptedFilePath, 'Decrypted');
+    setState(() {
+      files.removeWhere((file) =>
+      file['location'] == filePath || file['location'] == decryptedFilePath);
+    });
+
+    await encryptedFile.delete();
 
     _filePath = decryptedFilePath;
   }
@@ -319,7 +349,8 @@ class _MyHomePageState extends State<MyHomePage> {
         List<FileSystemEntity> entities = nestDir.listSync();
 
         for (FileSystemEntity entity in entities) {
-          if (entity is File && entity.path.toLowerCase().endsWith('_encrypted.txt')) {
+          if (entity is File &&
+              entity.path.toLowerCase().endsWith('_encrypted.txt')) {
             encryptedFiles.add(entity);
           }
         }
@@ -345,7 +376,8 @@ class _MyHomePageState extends State<MyHomePage> {
       String decryptedContent = rsa.decryptLine(encryptedData);
 
       // 새로운 키로 다시 암호화
-      String reencryptedFilePath = file.path.replaceAll('_encrypted.txt', '_reencrypted.txt');
+      String reencryptedFilePath = file.path.replaceAll(
+          '_encrypted.txt', '_reencrypted.txt');
       List<int> reencryptedData = rsa.encryptLine(decryptedContent);
       File reencryptedFile = File(reencryptedFilePath);
       await reencryptedFile.writeAsBytes(reencryptedData);
@@ -355,7 +387,6 @@ class _MyHomePageState extends State<MyHomePage> {
         files.removeWhere((element) => element['location'] == file.path);
         _uploadFile(reencryptedFilePath, 'Reencrypted');
       });
-
     } catch (e) {
       print('Error while decrypting and reencrypting file: $e');
     }
@@ -366,7 +397,10 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       backgroundColor: Color(0xffE0E0E0),
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Theme
+            .of(context)
+            .colorScheme
+            .inversePrimary,
         title: Row(
           children: [
             Text(widget.title),
@@ -379,144 +413,156 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       body: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  color: Colors.white,
-                  width: 500,
-                  child: DataTable(
-                    dataRowColor: MaterialStateProperty.all(Colors.white),
-                    columns: const <DataColumn>[
-                      DataColumn(label: Text('File Location')),
-                      DataColumn(label: Text('Status')),
-                    ],
-                    rows: List.generate(
-                      files.length,
-                          (index) => DataRow(cells: [
-                        DataCell(
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isDecryptionEnabled = true;
-                                _selectedIndex = index; // Store selected index
-                              });
-                            },
-                            child: Text(files[index]['location'] ?? ''),
-                          ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      color: Colors.white,
+                      width: 500,
+                      child: DataTable(
+                        dataRowColor: MaterialStateProperty.all(Colors.white),
+                        columns: const <DataColumn>[
+                          DataColumn(label: Text('File Location')),
+                          DataColumn(label: Text('Status')),
+                        ],
+                        rows: List.generate(
+                          files.length,
+                              (index) =>
+                              DataRow(cells: [
+                                DataCell(
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _isDecryptionEnabled = true;
+                                        _selectedIndex =
+                                            index; // Store selected index
+                                      });
+                                    },
+                                    child: Text(files[index]['location'] ?? ''),
+                                  ),
+                                ),
+                                DataCell(Text(files[index]['status'] ?? '')),
+                              ]),
                         ),
-                        DataCell(Text(files[index]['status'] ?? '')),
-                      ]),
+                      ),
                     ),
+                    const SizedBox(height: 100),
+                    ElevatedButton(
+                      onPressed: _pickFile,
+                      child: Text('암호화'),
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _isDecryptionEnabled ? () {
+                        if (_selectedIndex != -1) {
+                          _decryptDocument(files[_selectedIndex]['location']);
+                        }
+                      } : null,
+                      child: Text('복호화'),
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.all(
+                            _isDecryptionEnabled ? Colors.blue : Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 50),
+              Column(
+                children: <Widget>[
+                  const SizedBox(height: 100),
+                  Text(
+                    '암호 알고리즘 선택',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(height: 100),
-                ElevatedButton(
-                  onPressed: _pickFile,
-                  child: Text('암호화'),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _isDecryptionEnabled ? () {
-                    if (_selectedIndex != -1) {
-                      _decryptDocument(files[_selectedIndex]['location']);
-                    }
-                  } : null,
-                  child: Text('복호화'),
-                  style: ButtonStyle(
-                    backgroundColor: MaterialStateProperty.all(_isDecryptionEnabled ? Colors.blue : Colors.grey),
+                  const SizedBox(height: 20),
+                  DropdownButton(
+                    value: _selectedalgo,
+                    items: _algorithms
+                        .map((e) =>
+                        DropdownMenuItem(
+                          value: e,
+                          child: Text(e),
+                        ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedalgo = value!;
+                      });
+                    },
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 50),
-            Column(
-              children: <Widget>[
-                const SizedBox(height: 100),
-                Text(
-                  '암호 알고리즘 선택',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                DropdownButton(
-                  value: _selectedalgo,
-                  items: _algorithms
-                      .map((e) => DropdownMenuItem(
-                    value: e,
-                    child: Text(e),
-                  ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedalgo = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 130),
-                Text(
-                  '키 값 안전성 설정',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                Slider(
-                  value: _cycleValue,
-                  min: 0,
-                  max: 8,
-                  divisions: 8,
-                  label: _cycleValue.toString(),
-                  activeColor: _cycleValue >= 4 ? Colors.green : Colors.red,
-                  onChanged: (newValue) {
-                    setState(() {
-                      _cycleValue = newValue;
-                      int realnum = (pow(2, _cycleValue)  * 50).toInt();
-                      rsa.setKeySafetyLevel(realnum);
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(width: 70),
-            Column(
-              children: <Widget>[
-                const SizedBox(height: 100),
-                Text(
-                  '키 파일 생성',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  '키 파일을 분실하였을 때 사용하세요. 이전의 암호화 파일들은 되돌릴 수 없습니다.',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.normal, color: Colors.red),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: createRSAKeyFile,
-                  child: Text('생성'),
-                ),
-                const SizedBox(height: 100),
-                Text(
-                  '클린업 사이클 설정',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                Slider(
-                  value: _sliderValue,
-                  min: 10,
-                  max: 100,
-                  divisions: 9,
-                  label: _sliderValue.toString(),
-                  activeColor: _sliderValue >= 50 ? Colors.green : Colors.red,
-                  onChanged: (newValue) {
-                    setState(() {
-                      _sliderValue = newValue;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(height: 130),
+                  Text(
+                    '키 값 안전성 설정',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  Slider(
+                    value: _cycleValue,
+                    min: 0,
+                    max: 8,
+                    divisions: 8,
+                    label: _cycleValue.toString(),
+                    activeColor: _cycleValue >= 4 ? Colors.green : Colors.red,
+                    onChanged: (newValue) {
+                      setState(() {
+                        _cycleValue = newValue;
+                        int realnum = (pow(2, _cycleValue) * 50).toInt();
+                        rsa.setKeySafetyLevel(realnum);
+                      });
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(width: 70),
+              Column(
+                children: <Widget>[
+                  const SizedBox(height: 100),
+                  Text(
+                    '키 파일 생성',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '키 파일을 분실하였을 때 사용하세요. 이전의 암호화 파일들은 되돌릴 수 없습니다.',
+                    style: TextStyle(fontSize: 10,
+                        fontWeight: FontWeight.normal,
+                        color: Colors.red),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: createRSAKeyFile,
+                    child: Text('생성'),
+                  ),
+                  const SizedBox(height: 100),
+                  Text(
+                    '클린업 사이클 설정',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  Slider(
+                    value: _sliderValue,
+                    min: 10,
+                    max: 100,
+                    divisions: 9,
+                    label: _sliderValue.toString(),
+                    activeColor: _sliderValue >= 50 ? Colors.green : Colors.red,
+                    onChanged: (newValue) {
+                      setState(() {
+                        _sliderValue = newValue;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

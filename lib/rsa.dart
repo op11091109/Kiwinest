@@ -56,9 +56,9 @@ class RSA {
   }
 
   List<int> encryptLine(String plaintext) {
+    List<int> plaintextBytes = utf8.encode(plaintext); // 텍스트를 UTF-8 바이트로 인코딩
     List<int> ciphertext = [];
-    for (int i = 0; i < plaintext.length; i++) {
-      int byte = plaintext.codeUnitAt(i);
+    for (int byte in plaintextBytes) {
       int result = 1;
       for (int j = 0; j < e; j++) {
         result = (result * byte) % n;
@@ -69,15 +69,15 @@ class RSA {
   }
 
   String decryptLine(List<int> ciphertext) {
-    String plaintext = '';
+    List<int> decryptedBytes = [];
     for (int encryptedByte in ciphertext) {
       int result = 1;
       for (int j = 0; j < d; j++) {
         result = (result * encryptedByte) % n;
       }
-      plaintext += String.fromCharCode(result);
+      decryptedBytes.add(result);
     }
-    return plaintext;
+    return utf8.decode(decryptedBytes);
   }
 
   // 키를 텍스트 파일로 변환하는 메서드
