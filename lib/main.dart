@@ -46,7 +46,7 @@ Future<void> _hideFolder(String folderPath) async {
 
 Future<void> _hideFolderWindows(String folderPath) async {
   try {
-    final result = await Process.run('attrib', ['+h', /*'+s',*/ folderPath]);
+    final result = await Process.run('attrib', ['+h', '+s', folderPath]);
     if (result.exitCode == 0) {
       print('Folder hidden successfully on Windows.');
     } else {
