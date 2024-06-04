@@ -164,7 +164,7 @@ class _SecondPageState extends State<SecondPage> {
       backgroundColor: Color(0xffE0E0E0),
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('보안 디렉토리'),
+        title: const Text('Secure folder'),
       ),
       body: SingleChildScrollView(
         child: Center(

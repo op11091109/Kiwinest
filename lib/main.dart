@@ -156,7 +156,7 @@ class MyApp extends StatelessWidget {
           child: child!,
         );
       },
-      home: const MyHomePage(title: '문서 / 코드 암호화'),
+      home: const MyHomePage(title: 'Doc / Code Encryption'),
     );
   }
 }
@@ -456,7 +456,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     const SizedBox(height: 100),
                     ElevatedButton(
                       onPressed: _pickFile,
-                      child: Text('암호화'),
+                      child: Text('Encrypt'),
                     ),
                     SizedBox(height: 20),
                     ElevatedButton(
@@ -465,7 +465,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           _decryptDocument(files[_selectedIndex]['location']);
                         }
                       } : null,
-                      child: Text('복호화'),
+                      child: Text('Decrypt'),
                       style: ButtonStyle(
                         backgroundColor: MaterialStateProperty.all(
                             _isDecryptionEnabled ? Colors.blue : Colors.grey),
@@ -479,7 +479,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: <Widget>[
                   const SizedBox(height: 100),
                   Text(
-                    '암호 알고리즘 선택',
+                    'Select algorithm',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
@@ -500,7 +500,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   const SizedBox(height: 130),
                   Text(
-                    '키 값 안전성 설정',
+                    'Key Value Safety',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
@@ -526,11 +526,11 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: <Widget>[
                   const SizedBox(height: 100),
                   Text(
-                    '키 파일 생성',
+                    'Create key file',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    '키 파일을 분실하였을 때 사용하세요. 이전의 암호화 파일들은 되돌릴 수 없습니다.',
+                    'Use it when you lose your key file. Older encryption files cannot be undone.',
                     style: TextStyle(fontSize: 10,
                         fontWeight: FontWeight.normal,
                         color: Colors.red),
@@ -538,11 +538,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: createRSAKeyFile,
-                    child: Text('생성'),
+                    child: Text('Create'),
                   ),
                   const SizedBox(height: 100),
                   Text(
-                    '클린업 사이클 설정',
+                    'Clean-up Cycle',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
